@@ -1,0 +1,79 @@
+name: Build for Windows 2019
+
+env:
+  ACTIONS_RUNTIME_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Controls when the workflow will run
+on:
+  # push:
+    # # Sequence of patterns matched against refs/tags
+    # tags:
+    # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Build tags'
+
+jobs:
+  build_windows:
+    if: ${{ github.actor == 'badabing2005' }}
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+    runs-on: windows-2019
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Create virtual environment
+        run: python -m venv myenv
+        shell: powershell
+
+      - name: Activate virtual environment
+        run: .\myenv\Scripts\Activate.ps1
+        shell: powershell
+
+      - name: Install wxPython and build
+        run: |
+          python --version
+          pip install -U six wheel setuptools
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/4.2.1 wxPython
+        shell: powershell
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: List modules and their versions
+        run: pip freeze
+
+      - name: Build application
+        run: .\build.bat
+
+      - name: Rename the file
+        run: mv dist/PixelFlasher.exe dist/PixelFlasher_Win_2019.exe
+
+      - name: Get sha256
+        run: |
+          certutil -hashfile dist/PixelFlasher_Win_2019.exe SHA256 > dist/PixelFlasher_Win_2019.exe.sha256
+          cat dist/PixelFlasher_Win_2019.exe.sha256
+
+      - name: List contents of dist directory
+        run: ls dist
+
+      # Upload artifacts Windows to Actions
+      - name: Upload Windows Artifact
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }} # Only run this step when running in GitHub Actions
+        uses: actions/upload-artifact@v4
+        id: upload_artifacts_windows
+        with:
+          name: PixelFlasher_Win_2019.exe Artifacts
+          path: |
+            dist/PixelFlasher_Win_2019.exe
+            dist/PixelFlasher_Win_2019.exe.sha256
+

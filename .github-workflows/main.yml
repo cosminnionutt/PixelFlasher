@@ -1,0 +1,450 @@
+name: Build for All platforms
+
+env:
+  ACTIONS_RUNTIME_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Controls when the workflow will run
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Build tags'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  #                              build_windows
+  # ---------------------------------------------------------------------------
+  build_windows:
+    if: github.actor == 'badabing2005'
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create virtual environment
+        run: python -m venv myenv
+        shell: powershell
+
+      - name: Activate virtual environment
+        run: .\myenv\Scripts\Activate.ps1
+        shell: powershell
+
+      - name: Install wxPython and build
+        run: |
+          python --version
+          pip install -U six wheel setuptools
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/4.2.1 wxPython
+        shell: powershell
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: List modules and their versions
+        run: pip freeze
+
+      - name: Build application
+        run: .\build.bat
+
+      - name: Get sha256
+        run: |
+          certutil -hashfile dist/PixelFlasher.exe SHA256 > dist/PixelFlasher.exe.sha256
+          cat dist/PixelFlasher.exe.sha256
+
+      - name: List contents of dist directory
+        run: ls dist
+
+      # Upload artifacts Windows
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        id: upload_artifacts_windows
+        with:
+          name: PixelFlasher.exe Artifacts
+          path: |
+            dist/PixelFlasher.exe
+            dist/PixelFlasher.exe.sha256
+
+  # ---------------------------------------------------------------------------
+  #                              build_windows_2019
+  # ---------------------------------------------------------------------------
+  build_windows_2019:
+    if: github.actor == 'badabing2005'
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+    runs-on: windows-2019
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Create virtual environment
+        run: python -m venv myenv
+        shell: powershell
+
+      - name: Activate virtual environment
+        run: .\myenv\Scripts\Activate.ps1
+        shell: powershell
+
+      - name: Install wxPython and build
+        run: |
+          python --version
+          pip install -U six wheel setuptools
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/4.2.1 wxPython
+        shell: powershell
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: List modules and their versions
+        run: pip freeze
+
+      - name: Build application
+        run: .\build.bat
+
+      - name: Rename the file
+        run: mv dist/PixelFlasher.exe dist/PixelFlasher_Win_2019.exe
+
+      - name: Get sha256
+        run: |
+          certutil -hashfile dist/PixelFlasher_Win_2019.exe SHA256 > dist/PixelFlasher_Win_2019.exe.sha256
+          cat dist/PixelFlasher_Win_2019.exe.sha256
+
+      - name: List contents of dist directory
+        run: ls dist
+
+      # Upload artifacts Windows 2019
+      - name: Upload Windows 2019 Artifact
+        uses: actions/upload-artifact@v4
+        id: upload_artifacts_windows_2019
+        with:
+          name: PixelFlasher_Win_2019.exe Artifacts
+          path: |
+            dist/PixelFlasher_Win_2019.exe
+            dist/PixelFlasher_Win_2019.exe.sha256
+
+  # ---------------------------------------------------------------------------
+  #                              build_ubuntu_20_04
+  # ---------------------------------------------------------------------------
+  build_ubuntu_20_04:
+    if: github.actor == 'badabing2005'
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        run: |
+          sudo apt update
+          sudo apt install software-properties-common -y
+          sudo add-apt-repository ppa:deadsnakes/ppa -y
+          sudo apt update
+          sudo apt install -y python3.11
+          sudo apt install -y python3.11-venv
+          sudo apt install -y python3-pip
+          python3.11 --version
+
+      - name: Install wxPython prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3.11-dev
+          sudo apt-get install -y libgtk-3-dev
+          sudo apt-get install -y libunwind-dev
+          sudo apt-get install -y libgstreamer1.0-dev
+          sudo apt-get install -y gstreamer1.0-plugins-base
+          sudo apt-get install -y freeglut3-dev
+          sudo apt-get install -y libwebkit2gtk-4.0-dev
+          sudo apt-get install -y libjpeg-dev
+          sudo apt-get install -y libpng-dev
+          sudo apt-get install -y libtiff-dev
+          sudo apt-get install -y libsdl2-dev
+          sudo apt-get install -y libnotify-dev
+          sudo apt-get install -y libsm-dev
+
+      - name: Create virtual environment, install dependencies, and build
+        run: |
+          python3.11 -m venv myenv
+          . myenv/bin/activate
+          python --version
+          pip install -U pip
+          pip install -U six wheel setuptools
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04 wxPython
+          pip install -r requirements.txt
+          python --version && pip freeze
+          ./build.sh
+          mv dist/PixelFlasher dist/PixelFlasher_Ubuntu_20_04
+          sha256sum dist/PixelFlasher_Ubuntu_20_04 > dist/PixelFlasher_Ubuntu_20_04.sha256
+          cat dist/PixelFlasher_Ubuntu_20_04.sha256
+          ls dist
+        shell: bash
+
+      # Upload artifacts Ubuntu 20.04
+      - name: Upload Ubuntu 20.04 Artifact
+        uses: actions/upload-artifact@v4
+        id: upload_artifacts_ubuntu_20_04
+        with:
+          name: PixelFlasher_Ubuntu_20_04 Artifacts
+          path: |
+            dist/PixelFlasher_Ubuntu_20_04
+            dist/PixelFlasher_Ubuntu_20_04.sha256
+
+  # ---------------------------------------------------------------------------
+  #                              build_ubuntu_22_04
+  # ---------------------------------------------------------------------------
+  build_ubuntu_22_04:
+    if: github.actor == 'badabing2005'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        run: |
+          sudo apt update
+          sudo apt install software-properties-common -y
+          sudo add-apt-repository ppa:deadsnakes/ppa -y
+          sudo apt update
+          sudo apt install -y python3.11
+          sudo apt install -y python3.11-venv
+          sudo apt install -y python3-pip
+          python3.11 --version
+
+      - name: Install wxPython prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3.11-dev
+          sudo apt-get install -y libgtk-3-dev
+          sudo apt-get install -y libunwind-dev
+          sudo apt-get install -y libgstreamer1.0-dev
+          sudo apt-get install -y gstreamer1.0-plugins-base
+          sudo apt-get install -y freeglut3-dev
+          sudo apt-get install -y libwebkit2gtk-4.0-dev
+          sudo apt-get install -y libjpeg-dev
+          sudo apt-get install -y libpng-dev
+          sudo apt-get install -y libtiff-dev
+          sudo apt-get install -y libsdl2-dev
+          sudo apt-get install -y libnotify-dev
+          sudo apt-get install -y libsm-dev
+
+      - name: Create virtual environment, install dependencies, and build
+        run: |
+          python3.11 -m venv myenv
+          . myenv/bin/activate
+          python --version
+          pip install -U pip
+          pip install -U six wheel setuptools
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython
+          pip install -r requirements.txt
+          python --version && pip freeze
+          ./build.sh
+          mv dist/PixelFlasher dist/PixelFlasher_Ubuntu_22_04
+          sha256sum dist/PixelFlasher_Ubuntu_22_04 > dist/PixelFlasher_Ubuntu_22_04.sha256
+          cat dist/PixelFlasher_Ubuntu_22_04.sha256
+          ls dist
+        shell: bash
+
+      # Upload artifacts Ubuntu 22.04
+      - name: Upload Ubuntu 22.04 Artifact
+        uses: actions/upload-artifact@v4
+        id: upload_artifacts_ubuntu_22_04
+        with:
+          name: PixelFlasher_Ubuntu_22_04 Artifacts
+          path: |
+            dist/PixelFlasher_Ubuntu_22_04
+            dist/PixelFlasher_Ubuntu_22_04.sha256
+
+  # ---------------------------------------------------------------------------
+  #                              build_mac_11
+  # ---------------------------------------------------------------------------
+  build_mac_11:
+    if: github.actor == 'badabing2005'
+    # runs-on: macos-latest
+    runs-on: macos-11
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List Cellar directory
+        run: |
+          ls /usr/local/Cellar
+
+      - name: Uninstall Pythons other than 3.11
+        run: |
+          brew uninstall --ignore-dependencies python@3.10
+          brew uninstall --ignore-dependencies python@3.12
+          echo "doing brew list"
+          brew list
+          echo "getting directory list for /usr/local/Cellar"
+          ls /usr/local/Cellar
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install wxPython
+        # run: brew install wxpython
+        run: pip install wxPython
+
+      - name: Install node
+        run: brew install node
+
+      - name: Install create-dmg
+        run: |
+          npm cache clean --force
+          npm install --global create-dmg
+
+      - name: Add Python 3.11 to PATH
+        run: export PATH=/usr/local/Cellar/python@3.11/bin:$PATH
+
+      - name: Create virtual environment
+        run: python3.11 -m venv myenv
+        shell: bash
+
+      - name: Activate virtual environment
+        run: source myenv/bin/activate
+        shell: bash
+
+      - name: Install requirements
+        run: python3.11 -m pip install -r requirements.txt
+
+      - name: List modules and their versions
+        run: python3.11 -m pip freeze
+
+      - name: Build application
+        id: build_app
+        run: ./build.sh
+
+      - name: Upload PixelFlasher.app as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelFlasher.app
+          path: dist/PixelFlasher.app
+
+      # - name: Create DMG
+      #   id: create_dmg
+      #   run: |
+      #     create-dmg dist/PixelFlasher.app dist
+      #     ls -l ./ dist/
+      #   if: ${{ steps.build_app.outcome == 'success' }}
+      #   continue-on-error: true
+
+      # - name: Rename the file
+      #   id: rename_dmg
+      #   run: mv dist/PixelFlasher*.dmg dist/PixelFlasher.dmg
+
+      - name: Get sha256
+        run: |
+          shasum -a 256 dist/PixelFlasher.dmg > dist/PixelFlasher.dmg.sha256
+          cat dist/PixelFlasher.dmg.sha256
+        if: ${{ steps.build_app.outcome == 'success' }}
+
+      - name: List contents of dist directory
+        run: ls ./ dist/
+
+      # Upload artifacts Mac-OS 11
+      - name: Upload Mac-OS 11 Artifact
+        uses: actions/upload-artifact@v4
+        id: upload_artifact_macos_11
+        with:
+          name: PixelFlasher.dmg Artifacts
+          path: |
+            dist/PixelFlasher.dmg
+            dist/PixelFlasher.dmg.sha256
+
+  # ---------------------------------------------------------------------------
+  #                              deploy
+  # ---------------------------------------------------------------------------
+  deploy:
+    if: github.actor == 'badabing2005'
+    needs: [build_windows, build_windows_2019, build_ubuntu_20_04, build_ubuntu_22_04]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get version
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              version=${GITHUB_REF#refs/tags/v}
+          else
+              version=0.0.0.${GITHUB_REF#refs/heads/}
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      # Download the Windows artifact from the build_windows job
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelFlasher.exe Artifacts
+          path: release
+        continue-on-error: true
+
+      # Download the Windows-2019 artifact from the build_windows_2019 job
+      - name: Download Windows-2019 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelFlasher_Win_2019.exe Artifacts
+          path: release
+        continue-on-error: true
+
+      # Download the Ubuntu_20_04 artifact from the build_ubuntu_20_04 job
+      - name: Download Ubuntu_20_04 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelFlasher_Ubuntu_20_04 Artifacts
+          path: release
+        continue-on-error: true
+
+      # Download the Ubuntu_22_04 artifact from the build_ubuntu_22_04 job
+      - name: Download Ubuntu_22_04 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelFlasher_Ubuntu_22_04 Artifacts
+          path: release
+        continue-on-error: true
+
+      # Download the Mac-OS artifacts from the build_mac_13 job
+      - name: Download Mac-OS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelFlasher.dmg Artifacts
+          path: release
+        continue-on-error: true
+
+      # List the artifacts downloaded
+      - name: List contents of dist directory
+        run: ls ${{ github.workspace }}/release*
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          # body_path: RELEASE.md
+          draft: true
+          prerelease: false
+          files: |
+            release/*
+        continue-on-error: true
